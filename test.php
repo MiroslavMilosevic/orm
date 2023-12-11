@@ -13,32 +13,31 @@ define('DB_CONFIG',  [
 $orm = new ORM(DB_CONFIG);
 
 
+$raw_sql_group_by = 
+$orm->fields('first_name', 'COUNT(*) as num_of_rows')
+->c('country', '=', 'RS')->or()->c('country', '=', 'MS')->or()->c('country', '=', 'JA')->or()->c('country', '=', 'OK')->groupBy('first_name')
+->having()->c('first_name', '<>', 'BBznVaTe')->and()->obr()->c('first_name', '<>', '3Fz1BkLSSq3Hi1')->cbr()
+->orderBy('num_of_rows', 'DESC')
+->select()->toRawSql();
 
+echo '<pre>';
+print_r($raw_sql_group_by);
+echo '</pre>';
+
+// $raw_sql = $orm->fields('email','first_name', 'email_verified_at')
+// ->c('email', '=' ,'jovan@javas.com')->or()->obr()->c('email', 'LIKE', '%@%')->and()->c('email', '<>', 'miroslav.milosevic999@gmail.com')->cbr()
+// ->orderBy('email_verified_at', 'ASC')
+// ->select()->toRawSql();
 
 // echo '<pre>';
-// print_r($orm->getTableStructure());
+// print_r($raw_sql);
 // echo '</pre>';
 
-
-// $orm->fields('pid', 'eid')
-// ->c('time_stamp', '>=' ,'2023-01-01')
-// ->and()
-//    ->obr()
-//       ->c('time_stamp', '<' ,'2022-01-01')->or()->obr()->c('aff_id', '=' , '55151')->and()->c('player_id', '<>', '51234')->cbr()
-//    ->cbr()->select();
-
-echo '<pre>';
-print_r($orm->fields('email','first_name', 'email_verified_at')
-->c('email', '=' ,'jovan@javas.com')->or()
-->obr()->c('email', 'LIKE', '%@%')->and()->c('email', '<>', 'miroslav.milosevic999@gmail.com')->cbr()
-->orderBy('email_verified_at', 'ASC')
-->select()->toRawSql());
-echo '</pre>';
-$player = $orm->exectue();
+$result_array = $orm->exectue();
 
 
 echo '<pre>';
-print_r($player);
+print_r($result_array);
 echo '</pre>';
 
 

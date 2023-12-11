@@ -4,6 +4,8 @@
 
 // SELECT <fields> FROM <table> WHERE <conditions>
 //REQ --- conditions
+//TODO FOR SELECT:
+//1. GROUP BY, LIMIT, HAVING
 
 // DELETE FROM <table> WHERE <condition>
 //REQ --- conditions
@@ -131,7 +133,13 @@ class ORM
 
     public function c(string $field, string $operator, $value): ORM
     {
-        $this->query_attributes[] = ['type' => 'normal', 'field' => $field, 'operator' => $operator, 'value' => $value];
+        $this->query_attributes[] = ['type' => ($this->hactive() ? 'having_condition' : 'condition'), 'field' => $field, 'operator' => $operator, 'value' => $value];
+        return $this;
+    }
+
+    public function having(): ORM
+    {
+        $this->query_attributes[] = ['type'=>'having'];
         return $this;
     }
 
@@ -143,58 +151,60 @@ class ORM
 
     public function and(): ORM
     {
-        $this->query_attributes[] = ['type' => 'operator', 'value' => 'AND'];
+        $this->query_attributes[] = ['type' => ($this->hactive() ? 'having_operator' : 'operator'), 'value' => 'AND'];
         return $this;
     }
     public function or(): ORM
     {
-        $this->query_attributes[] = ['type' => 'operator', 'value' => 'OR'];
+        $this->query_attributes[] = ['type' => ($this->hactive() ? 'having_operator' : 'operator'), 'value' => 'OR'];
         return $this;
     }
 
     public function obr(): ORM
     {
-        $this->query_attributes[] = ['type' => 'bracket', 'value' => '('];
+        $this->query_attributes[] = ['type' => ($this->hactive() ? 'having_bracket' : 'bracket'), 'value' => '('];
         return $this;
     }
 
     public function cbr(): ORM
     {
-        $this->query_attributes[] = ['type' => 'bracket', 'value' => ')'];
+        $this->query_attributes[] = ['type' => ($this->hactive() ? 'having_bracket' : 'bracket'), 'value' => ')'];
         return $this;
     }
 
     public function fields(string ...$fields): ORM
     {
-
         if (count($fields) <= 0) {
             $this->query_attributes[] = ['type' => 'fields', 'value' => ['*']];
         }
-
         $all_fields = [];
         foreach ($fields as $field) {
             $all_fields[] = $field;
         }
-
         $this->query_attributes[] = ['type' => 'fields', 'value' => $all_fields];
-
         return $this;
     }
 
-    public function orderBy(string $field, string $value) : ORM{
-        
+    public function orderBy(string $field, string $value): ORM
+    {
         $this->query_attributes[] = ['type' => 'order_by', 'field' => $field, 'value' => $value];
+        return $this;
+    }
+
+    public function groupBy(string ...$fields): ORM
+    {
+        $this->query_attributes[] = ['type' => 'group_by', 'fields' => $fields];
         return $this;
     }
 
     private function buildQuery(): void
     {
         if ($this->crud_type == 'select') {
-            // $this->query .= "SELECT " . $this->buildFieldsPartSelect() . " FROM " . $this->table;
-            // $this->query .= " WHERE " . $this->buildWherePart();
-            // $this->query .= ' ORDER BY ' . $this->buildOrderByPart() . ' ';
+
             $this->query .= $this->buildFieldsPartSelect();
             $this->query .= $this->buildWherePart();
+            $this->query .= $this->buildGroupByPart();
+            $this->query .= $this->buildHavingPart();
             $this->query .=  $this->buildOrderByPart();
 
         } elseif ($this->crud_type == 'insert') {
@@ -204,7 +214,6 @@ class ORM
             $this->errors[] = 'one of following functions must me called: select(), insert(), update() or delete()';
         }
     }
-
 
 
     private function buildWherePart(): string
@@ -221,7 +230,7 @@ class ORM
                 case 'operator':
                     $where_part .= ' ' . $qa['value'] . ' ';
                     break;
-                case 'normal':
+                case 'condition':
                     $where_part .= ' ' . '`' . $qa['field'] . '` ' . $qa['operator'] . " '" . $qa['value'] . "' ";
                     break;
                 default:
@@ -229,15 +238,14 @@ class ORM
                     break;
             }
         }
-
         return  " WHERE " . $where_part;
     }
+
 
     private function buildFieldsPartSelect(): string
     {
         $fields_string = "";
         foreach ($this->query_attributes as $qa) {
-
             if ($qa['type'] == 'fields') {
                 foreach ($qa['value'] as $f) {
                     if ($f != '') {
@@ -246,7 +254,7 @@ class ORM
                 }
             }
         }
-        return $fields_string == "" ? ('SELECT '."*". ' FROM ') : ('SELECT '. trim($fields_string, ",") . ' FROM ' .  $this->table);
+        return $fields_string == "" ? ('SELECT ' . "*" . ' FROM ') : ('SELECT ' . trim($fields_string, ",") . ' FROM ' .  $this->table);
     }
 
     private function buildOrderByPart(): string
@@ -255,11 +263,62 @@ class ORM
         foreach ($this->query_attributes as $qa) {
 
             if ($qa['type'] == 'order_by') {
-
                 $order_by_string .= $qa['field'] . ' ' . $qa['value'] . ',';
-
             }
         }
-        return $order_by_string == "" ? "" : ' ORDER BY ' . trim($order_by_string, ","); 
+        return $order_by_string == "" ? "" : ' ORDER BY ' . trim($order_by_string, ",");
+    }
+
+    private function buildGroupByPart(): string
+    {
+        $group_by_string = "";
+        foreach ($this->query_attributes as $qa) {
+
+            if ($qa['type'] == 'group_by') {
+                foreach($qa['fields'] as $field){
+                $group_by_string .= $field . ',';
+                }
+            }
+        }
+        return $group_by_string == "" ? "" : ' GROUP BY ' . trim($group_by_string, ",");
+    }
+
+
+
+
+    
+    private function buildHavingPart(): string
+    {
+
+        $having_part_string = "";
+
+        foreach ($this->query_attributes as $qa) {
+
+            switch ($qa['type']) {
+                case 'having_bracket':
+                    $having_part_string .= $qa['value'];
+                    break;
+                case 'having_operator':
+                    $having_part_string .= ' ' . $qa['value'] . ' ';
+                    break;
+                case 'having_condition':
+                    $having_part_string .= ' ' . '`' . $qa['field'] . '` ' . $qa['operator'] . " '" . $qa['value'] . "' ";
+                    break;
+                default:
+                    # code...
+                    break;
+            }
+        }
+
+        return  empty($having_part_string) ? ' ' : " HAVING " . $having_part_string;
+    }
+
+    private function hactive(): bool{
+        foreach($this->query_attributes as $qa){
+            if($qa['type'] == 'having'){
+                return true;
+            }
+        }
+        return false;
     }
 }
