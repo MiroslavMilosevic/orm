@@ -139,7 +139,19 @@ class ORM
 
     public function having(): ORM
     {
-        $this->query_attributes[] = ['type'=>'having'];
+        $this->query_attributes[] = ['type' => 'having'];
+        return $this;
+    }
+
+    public function limit(int $limit): ORM
+    {
+        $this->query_attributes[] = ['type' => 'limit', 'value' => $limit];
+        return $this;
+    }
+
+    public function offset(int $offset): ORM
+    {
+        $this->query_attributes[] = ['type' => 'offset', 'value' => $offset];
         return $this;
     }
 
@@ -206,6 +218,10 @@ class ORM
             $this->query .= $this->buildGroupByPart();
             $this->query .= $this->buildHavingPart();
             $this->query .=  $this->buildOrderByPart();
+            $this->query .=  $this->buildLimitPart();
+            $this->query .=  $this->buildOffsetPart();
+
+
 
         } elseif ($this->crud_type == 'insert') {
         } elseif ($this->crud_type == 'update') {
@@ -275,18 +291,14 @@ class ORM
         foreach ($this->query_attributes as $qa) {
 
             if ($qa['type'] == 'group_by') {
-                foreach($qa['fields'] as $field){
-                $group_by_string .= $field . ',';
+                foreach ($qa['fields'] as $field) {
+                    $group_by_string .= $field . ',';
                 }
             }
         }
         return $group_by_string == "" ? "" : ' GROUP BY ' . trim($group_by_string, ",");
     }
 
-
-
-
-    
     private function buildHavingPart(): string
     {
 
@@ -313,9 +325,34 @@ class ORM
         return  empty($having_part_string) ? ' ' : " HAVING " . $having_part_string;
     }
 
-    private function hactive(): bool{
-        foreach($this->query_attributes as $qa){
-            if($qa['type'] == 'having'){
+    private function buildLimitPart(): string
+    {
+        $limit_string = "";
+        foreach ($this->query_attributes as $qa) {
+
+            if ($qa['type'] == 'limit') {
+                $limit_string .= 'LIMIT ' . $qa['value'];
+            }
+        }
+        return $limit_string == "" ? "" : ' ' . trim($limit_string);
+    }
+
+    private function buildOffsetPart(): string
+    {
+        $limit_string = "";
+        foreach ($this->query_attributes as $qa) {
+
+            if ($qa['type'] == 'offset') {
+                $limit_string .= 'OFFSET ' . $qa['value'];
+            }
+        }
+        return $limit_string == "" ? "" : ' ' . trim($limit_string);
+    }
+
+    private function hactive(): bool
+    {
+        foreach ($this->query_attributes as $qa) {
+            if ($qa['type'] == 'having') {
                 return true;
             }
         }

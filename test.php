@@ -17,7 +17,7 @@ $raw_sql_group_by =
 $orm->fields('first_name', 'COUNT(*) as num_of_rows')
 ->c('country', '=', 'RS')->or()->c('country', '=', 'MS')->or()->c('country', '=', 'JA')->or()->c('country', '=', 'OK')->groupBy('first_name')
 ->having()->c('first_name', '<>', 'BBznVaTe')->and()->obr()->c('first_name', '<>', '3Fz1BkLSSq3Hi1')->cbr()
-->orderBy('num_of_rows', 'DESC')
+->orderBy('num_of_rows', 'DESC')->limit(1)->offset(1)
 ->select()->toRawSql();
 
 echo '<pre>';
